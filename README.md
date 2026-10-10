@@ -11,7 +11,7 @@ uv run python -m primitive_db.main
 uv run project
 ```
 
-Обе команды запуска приложения выводят `DB project is running!`.
+Приложение запросит имя и поприветствует пользователя.
 
 ## Сборка пакета
 
