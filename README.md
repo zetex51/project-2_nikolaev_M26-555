@@ -47,6 +47,10 @@ uv tool install dist/*.whl
 database
 ```
 
+## Демонстрация
+
+[![Запись работы приложения](https://asciinema.org/a/KGkFmqVIya786ED8.svg)](https://asciinema.org/a/KGkFmqVIya786ED8)
+
 ## Сборка пакета
 
 ```sh
