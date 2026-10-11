@@ -2,6 +2,12 @@
 
 import re
 
+from primitive_db.decorators import (
+    confirm_action,
+    create_cacher,
+    handle_db_errors,
+    log_time,
+)
 from primitive_db.utils import load_table_data
 
 Metadata = dict[str, dict[str, str]]
@@ -9,12 +15,14 @@ Value = str | int | bool
 Row = dict[str, Value]
 SUPPORTED_TYPES = {"int", "str", "bool"}
 _TABLE_NAME = re.compile(r"^[\w-]+$", re.UNICODE)
+_select_cache = create_cacher()
 
 
 def _invalid_value(value: str) -> None:
     print(f"Некорректное значение: {value}. Попробуйте снова.")
 
 
+@handle_db_errors
 def create_table(metadata: Metadata, table_name: str, columns: list[str]) -> Metadata:
     """Create a table, adding an integer ID column when it was not supplied."""
     if not _TABLE_NAME.fullmatch(table_name):
@@ -62,6 +70,8 @@ def list_tables(metadata: Metadata) -> list[str]:
     return list(metadata)
 
 
+@handle_db_errors
+@confirm_action("удаление таблицы")
 def drop_table(metadata: Metadata, table_name: str) -> Metadata:
     """Remove a table from metadata if it exists."""
     if table_name not in metadata:
@@ -82,6 +92,8 @@ def _value_has_type(value: Value, expected_type: str) -> bool:
     }.get(expected_type, False)
 
 
+@handle_db_errors
+@log_time
 def insert(
     metadata: Metadata,
     table_name: str,
@@ -125,16 +137,29 @@ def _matches(row: Row, where_clause: dict[str, Value]) -> bool:
     )
 
 
+@handle_db_errors
+@log_time
 def select(
     table_data: list[Row],
     where_clause: dict[str, Value] | None = None,
 ) -> list[Row]:
-    """Return all rows or only rows matching every requested field."""
-    if where_clause is None:
-        return list(table_data)
-    return [row for row in table_data if _matches(row, where_clause)]
+    """Return cached rows matching every requested field."""
+    rows_key = tuple(
+        tuple((column, row[column]) for column in sorted(row)) for row in table_data
+    )
+    where_key = None if where_clause is None else tuple(sorted(where_clause.items()))
+    cache_key = rows_key, where_key
+
+    def find_rows() -> list[Row]:
+        if where_clause is None:
+            return [row.copy() for row in table_data]
+        return [row.copy() for row in table_data if _matches(row, where_clause)]
+
+    cached_rows = _select_cache(cache_key, find_rows)
+    return [row.copy() for row in cached_rows]
 
 
+@handle_db_errors
 def update(
     table_data: list[Row],
     set_clause: dict[str, Value],
@@ -147,6 +172,8 @@ def update(
     return table_data
 
 
+@handle_db_errors
+@confirm_action("удаление записей")
 def delete(
     table_data: list[Row],
     where_clause: dict[str, Value],

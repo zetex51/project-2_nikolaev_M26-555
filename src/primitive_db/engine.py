@@ -165,7 +165,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         if rows is None:
             return
         updated_rows = insert(metadata, table_name, values, rows)
-        if len(updated_rows) > len(rows):
+        if updated_rows is not None and len(updated_rows) > len(rows):
             _save_rows(table_name, updated_rows)
         return
 
@@ -189,7 +189,9 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
                 return
         rows = _load_rows(table_name)
         if rows is not None:
-            _print_rows(metadata, table_name, select(rows, where_clause))
+            selected_rows = select(rows, where_clause)
+            if selected_rows is not None:
+                _print_rows(metadata, table_name, selected_rows)
         return
 
     if command == "update":
@@ -225,12 +227,14 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         if rows is None:
             return
         matched = select(rows, where_clause)
+        if matched is None:
+            return
         if not matched:
             print(f'Записи в таблице "{table_name}" не найдены.')
             return
         matched_ids = [row["ID"] for row in matched]
         updated_rows = update(rows, set_clause, where_clause)
-        if _save_rows(table_name, updated_rows):
+        if updated_rows is not None and _save_rows(table_name, updated_rows):
             for record_id in matched_ids:
                 print(
                     f'Запись с ID={record_id} в таблице "{table_name}" '
@@ -258,10 +262,14 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         if rows is None:
             return
         matched = select(rows, where_clause)
+        if matched is None:
+            return
         if not matched:
             print(f'Записи в таблице "{table_name}" не найдены.')
             return
         remaining_rows = delete(rows, where_clause)
+        if remaining_rows is None:
+            return
         if _save_rows(table_name, remaining_rows):
             for row in matched:
                 print(
@@ -344,7 +352,9 @@ def run() -> None:
 
             table_name, *columns = parameters
             previous_metadata = metadata.copy()
-            create_table(metadata, table_name, columns)
+            created_metadata = create_table(metadata, table_name, columns)
+            if created_metadata is None:
+                continue
             if metadata != previous_metadata:
                 try:
                     save_metadata(METADATA_FILE, metadata)
@@ -373,7 +383,9 @@ def run() -> None:
 
             table_name = parameters[0]
             if table_name in metadata:
-                drop_table(metadata, table_name)
+                dropped_metadata = drop_table(metadata, table_name)
+                if dropped_metadata is None:
+                    continue
                 try:
                     save_metadata(METADATA_FILE, metadata)
                     delete_table_data(table_name)

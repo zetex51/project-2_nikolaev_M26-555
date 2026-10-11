@@ -36,6 +36,7 @@ exit
 Введите команду: list_tables
 - users
 Введите команду: drop_table users
+Вы уверены, что хотите выполнить "удаление таблицы"? [y/n]: y
 Таблица "users" успешно удалена.
 Введите команду: exit
 ```
@@ -63,8 +64,20 @@ insert into users values ("Sergei", 28, true)
 select from users where age = 28
 update users set age = 29 where name = "Sergei"
 delete from users where ID = 1
+Вы уверены, что хотите выполнить "удаление записей"? [y/n]: y
 info users
 ```
+
+## Декораторы и замыкания
+
+В `primitive_db.decorators` собраны общие обёртки для операций:
+
+- `handle_db_errors` централизованно обрабатывает ошибки базы и валидации.
+- `confirm_action` требует ввести `y` перед удалением записи или таблицы;
+  любой другой ответ отменяет операцию.
+- `log_time` выводит длительность `insert` и `select`.
+- `create_cacher()` хранит результаты `select` в замыкании. После изменения
+  снимка данных результат вычисляется заново.
 
 Каждая успешно созданная таблица получает файл в каталоге `data/`. Удаление
 таблицы командой `drop_table` удаляет и её файл с записями.
@@ -79,7 +92,7 @@ database
 
 ## Демонстрация
 
-[![Демонстрация CRUD-операций](https://asciinema.org/a/DAsRrGz6TcPd9k7G.svg)](https://asciinema.org/a/DAsRrGz6TcPd9k7G)
+[![Декораторы и CRUD-операции](https://asciinema.org/a/mmP4yMmhjgxfyiHU.svg)](https://asciinema.org/a/mmP4yMmhjgxfyiHU)
 
 ## Сборка пакета
 
