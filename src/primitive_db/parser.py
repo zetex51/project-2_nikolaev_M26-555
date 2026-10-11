@@ -1,10 +1,13 @@
 """Parsers for SQL-like data commands used by the console application."""
 
-import re
 import shlex
 
-_INTEGER = re.compile(r"^[+-]?\d+$")
-_IDENTIFIER = re.compile(r"^\w+$", re.UNICODE)
+from primitive_db.constants import (
+    FALSE_LITERAL,
+    IDENTIFIER_PATTERN,
+    INTEGER_PATTERN,
+    TRUE_LITERAL,
+)
 
 
 def _split_unquoted(text: str, delimiter: str) -> list[str]:
@@ -61,9 +64,9 @@ def _parse_literal(text: str) -> str | int | bool:
         return parsed[0]
 
     lowered = value.lower()
-    if lowered in {"true", "false"}:
-        return lowered == "true"
-    if _INTEGER.fullmatch(value):
+    if lowered in {TRUE_LITERAL, FALSE_LITERAL}:
+        return lowered == TRUE_LITERAL
+    if INTEGER_PATTERN.fullmatch(value):
         return int(value)
     raise ValueError(f"строковое значение {value} должно быть в кавычках")
 
@@ -136,7 +139,7 @@ def parse_assignments(
     assignments: dict[str, str | int | bool] = {}
     for raw_assignment in raw_assignments:
         column_name, raw_value = _partition_unquoted(raw_assignment, "=")
-        if not _IDENTIFIER.fullmatch(column_name):
+        if not IDENTIFIER_PATTERN.fullmatch(column_name):
             raise ValueError(f"некорректное имя столбца: {column_name}")
         if column_name in assignments:
             raise ValueError(f"столбец {column_name} указан несколько раз")

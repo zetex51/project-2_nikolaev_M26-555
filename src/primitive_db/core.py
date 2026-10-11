@@ -1,6 +1,12 @@
 """Core operations for database tables and their rows."""
 
-from primitive_db.constants import TABLE_NAME_PATTERN, VALID_TYPES
+from primitive_db.constants import (
+    ID_COLUMN,
+    INTEGER_TYPE,
+    TABLE_NAME_PATTERN,
+    TYPE_CLASSES,
+    VALID_TYPES,
+)
 from primitive_db.decorators import (
     confirm_action,
     create_cacher,
@@ -16,6 +22,7 @@ _select_cache = create_cacher()
 
 
 def _invalid_value(value: str) -> None:
+    """Print a short validation error for an invalid user value."""
     print(f"Некорректное значение: {value}. Попробуйте снова.")
 
 
@@ -47,12 +54,12 @@ def create_table(metadata: Metadata, table_name: str, columns: list[str]) -> Met
             return metadata
         parsed_columns[column_name] = column_type
 
-    id_type = parsed_columns.pop("ID", "int")
-    if id_type != "int":
-        _invalid_value(f"ID:{id_type}")
+    id_type = parsed_columns.pop(ID_COLUMN, INTEGER_TYPE)
+    if id_type != INTEGER_TYPE:
+        _invalid_value(f"{ID_COLUMN}:{id_type}")
         return metadata
 
-    table_columns = {"ID": "int", **parsed_columns}
+    table_columns = {ID_COLUMN: INTEGER_TYPE, **parsed_columns}
     metadata[table_name] = table_columns
     formatted_columns = ", ".join(
         f"{column_name}:{column_type}"
@@ -82,11 +89,7 @@ def drop_table(metadata: Metadata, table_name: str) -> Metadata:
 
 def _value_has_type(value: Value, expected_type: str) -> bool:
     """Check a value without treating bool as an int."""
-    return {
-        "int": type(value) is int,
-        "str": type(value) is str,
-        "bool": type(value) is bool,
-    }.get(expected_type, False)
+    return type(value) is TYPE_CLASSES.get(expected_type)
 
 
 @handle_db_errors
@@ -103,7 +106,7 @@ def insert(
         return table_data if table_data is not None else []
 
     rows = list(table_data) if table_data is not None else load_table_data(table_name)
-    columns = [name for name in metadata[table_name] if name != "ID"]
+    columns = [name for name in metadata[table_name] if name != ID_COLUMN]
     if len(values) != len(columns):
         print(f"Ошибка: ожидалось значений: {len(columns)}, получено: {len(values)}.")
         return rows
@@ -117,9 +120,9 @@ def insert(
             )
             return rows
 
-    ids = [row.get("ID", 0) for row in rows]
+    ids = [row.get(ID_COLUMN, 0) for row in rows]
     next_id = max((value for value in ids if type(value) is int), default=0) + 1
-    record: Row = {"ID": next_id}
+    record: Row = {ID_COLUMN: next_id}
     record.update(zip(columns, values, strict=True))
     rows.append(record)
     print(f'Запись с ID={next_id} успешно добавлена в таблицу "{table_name}".')

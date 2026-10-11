@@ -8,10 +8,12 @@ from prettytable import PrettyTable
 
 from primitive_db.constants import (
     DELETE_COMMAND,
+    ID_COLUMN,
     INFO_COMMAND,
     INSERT_COMMAND,
     META_FILE,
     SELECT_COMMAND,
+    TYPE_CLASSES,
     UPDATE_COMMAND,
 )
 from primitive_db.core import (
@@ -58,16 +60,13 @@ def print_help() -> None:
 
 
 def _invalid_value(value: str) -> None:
+    """Print a short validation error for a malformed command or value."""
     print(f"Некорректное значение: {value}. Попробуйте снова.")
 
 
 def _matches_type(value: Value, expected_type: str) -> bool:
     """Check literal types exactly because bool is a subclass of int."""
-    return {
-        "int": type(value) is int,
-        "str": type(value) is str,
-        "bool": type(value) is bool,
-    }.get(expected_type, False)
+    return type(value) is TYPE_CLASSES.get(expected_type)
 
 
 def _validate_clause(
@@ -90,7 +89,7 @@ def _validate_clause(
                 f'в таблице "{table_name}".'
             )
             return False
-        if column_name == "ID" and not allow_id:
+        if column_name == ID_COLUMN and not allow_id:
             print("Ошибка: столбец ID нельзя изменять.")
             return False
         expected_type = schema[column_name]
@@ -104,6 +103,7 @@ def _validate_clause(
 
 
 def _load_rows(table_name: str) -> list[Row] | None:
+    """Load a table's rows and report file or JSON errors to the user."""
     try:
         return load_table_data(table_name)
     except (OSError, ValueError, json.JSONDecodeError) as error:
@@ -112,6 +112,7 @@ def _load_rows(table_name: str) -> list[Row] | None:
 
 
 def _save_rows(table_name: str, rows: list[Row]) -> bool:
+    """Persist a table's rows and report file errors to the user."""
     try:
         save_table_data(table_name, rows)
     except (OSError, ValueError) as error:
@@ -219,7 +220,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         if not matched:
             print(f'Записи в таблице "{table_name}" не найдены.')
             return
-        matched_ids = [row["ID"] for row in matched]
+        matched_ids = [row[ID_COLUMN] for row in matched]
         updated_rows = update(rows, set_clause, where_clause)
         if updated_rows is not None and _save_rows(table_name, updated_rows):
             for record_id in matched_ids:
@@ -260,7 +261,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         if _save_rows(table_name, remaining_rows):
             for row in matched:
                 print(
-                    f"Запись с ID={row['ID']} успешно удалена из таблицы "
+                    f"Запись с ID={row[ID_COLUMN]} успешно удалена из таблицы "
                     f'"{table_name}".'
                 )
         return
