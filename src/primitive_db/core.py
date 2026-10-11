@@ -1,7 +1,6 @@
 """Core operations for database tables and their rows."""
 
-import re
-
+from primitive_db.constants import TABLE_NAME_PATTERN, VALID_TYPES
 from primitive_db.decorators import (
     confirm_action,
     create_cacher,
@@ -13,8 +12,6 @@ from primitive_db.utils import load_table_data
 Metadata = dict[str, dict[str, str]]
 Value = str | int | bool
 Row = dict[str, Value]
-SUPPORTED_TYPES = {"int", "str", "bool"}
-_TABLE_NAME = re.compile(r"^[\w-]+$", re.UNICODE)
 _select_cache = create_cacher()
 
 
@@ -25,7 +22,7 @@ def _invalid_value(value: str) -> None:
 @handle_db_errors
 def create_table(metadata: Metadata, table_name: str, columns: list[str]) -> Metadata:
     """Create a table, adding an integer ID column when it was not supplied."""
-    if not _TABLE_NAME.fullmatch(table_name):
+    if not TABLE_NAME_PATTERN.fullmatch(table_name):
         _invalid_value(table_name or "<имя таблицы>")
         return metadata
 
@@ -43,7 +40,7 @@ def create_table(metadata: Metadata, table_name: str, columns: list[str]) -> Met
         if (
             not column_name
             or any(character.isspace() for character in column_name)
-            or column_type not in SUPPORTED_TYPES
+            or column_type not in VALID_TYPES
             or column_name in parsed_columns
         ):
             _invalid_value(column)

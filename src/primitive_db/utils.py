@@ -1,11 +1,9 @@
 """JSON helpers for database metadata and table rows."""
 
 import json
-import re
 from pathlib import Path
 
-TABLE_DATA_DIR = Path("data")
-_TABLE_NAME = re.compile(r"^[\w-]+$", re.UNICODE)
+from primitive_db.constants import DATA_DIR, TABLE_NAME_PATTERN
 
 
 def load_metadata(filepath: str | Path) -> dict[str, dict[str, str]]:
@@ -26,9 +24,9 @@ def save_metadata(filepath: str | Path, data: dict[str, dict[str, str]]) -> None
 
 def _table_data_path(table_name: str) -> Path:
     """Return the JSON path for a safe table name."""
-    if not _TABLE_NAME.fullmatch(table_name):
+    if not TABLE_NAME_PATTERN.fullmatch(table_name):
         raise ValueError(f"Некорректное имя таблицы: {table_name}")
-    return TABLE_DATA_DIR / f"{table_name}.json"
+    return DATA_DIR / f"{table_name}.json"
 
 
 def load_table_data(table_name: str) -> list[dict[str, str | int | bool]]:

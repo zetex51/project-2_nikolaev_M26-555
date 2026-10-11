@@ -1,13 +1,19 @@
 """Application command loop and SQL-like command handling."""
 
 import json
-import re
 import shlex
-from pathlib import Path
 
 import prompt
 from prettytable import PrettyTable
 
+from primitive_db.constants import (
+    DELETE_COMMAND,
+    INFO_COMMAND,
+    INSERT_COMMAND,
+    META_FILE,
+    SELECT_COMMAND,
+    UPDATE_COMMAND,
+)
 from primitive_db.core import (
     Metadata,
     Row,
@@ -28,25 +34,6 @@ from primitive_db.utils import (
     save_metadata,
     save_table_data,
 )
-
-METADATA_FILE = Path("db_meta.json")
-_INSERT = re.compile(
-    r"insert\s+into\s+([\w-]+)\s+values\s*(\(.*\))\s*",
-    re.IGNORECASE | re.DOTALL,
-)
-_SELECT = re.compile(
-    r"select\s+from\s+([\w-]+)(?:\s+where\s+(.+))?\s*",
-    re.IGNORECASE | re.DOTALL,
-)
-_UPDATE = re.compile(
-    r"update\s+([\w-]+)\s+set\s+(.+)\s*",
-    re.IGNORECASE | re.DOTALL,
-)
-_DELETE = re.compile(
-    r"delete\s+from\s+([\w-]+)\s+where\s+(.+)\s*",
-    re.IGNORECASE | re.DOTALL,
-)
-_INFO = re.compile(r"info\s+([\w-]+)\s*", re.IGNORECASE)
 
 
 def print_help() -> None:
@@ -148,7 +135,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
     command = raw_command.lstrip().split(maxsplit=1)[0].lower()
 
     if command == "insert":
-        match = _INSERT.fullmatch(raw_command.strip())
+        match = INSERT_COMMAND.fullmatch(raw_command.strip())
         if match is None:
             _invalid_value("insert into <имя> values (<значения>)")
             return
@@ -170,7 +157,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         return
 
     if command == "select":
-        match = _SELECT.fullmatch(raw_command.strip())
+        match = SELECT_COMMAND.fullmatch(raw_command.strip())
         if match is None:
             _invalid_value("select from <имя> [where <столбец> = <значение>]")
             return
@@ -195,7 +182,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         return
 
     if command == "update":
-        match = _UPDATE.fullmatch(raw_command.strip())
+        match = UPDATE_COMMAND.fullmatch(raw_command.strip())
         if match is None:
             _invalid_value(
                 "update <имя> set <столбец> = <значение> where <столбец> = <значение>"
@@ -243,7 +230,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         return
 
     if command == "delete":
-        match = _DELETE.fullmatch(raw_command.strip())
+        match = DELETE_COMMAND.fullmatch(raw_command.strip())
         if match is None:
             _invalid_value("delete from <имя> where <столбец> = <значение>")
             return
@@ -279,7 +266,7 @@ def _handle_data_command(raw_command: str, metadata: Metadata) -> None:
         return
 
     if command == "info":
-        match = _INFO.fullmatch(raw_command.strip())
+        match = INFO_COMMAND.fullmatch(raw_command.strip())
         if match is None:
             _invalid_value("info <имя>")
             return
@@ -305,7 +292,7 @@ def run() -> None:
 
     while True:
         try:
-            metadata = load_metadata(METADATA_FILE)
+            metadata = load_metadata(META_FILE)
         except (OSError, ValueError) as error:
             print(f"Ошибка чтения метаданных: {error}")
             return
@@ -357,7 +344,7 @@ def run() -> None:
                 continue
             if metadata != previous_metadata:
                 try:
-                    save_metadata(METADATA_FILE, metadata)
+                    save_metadata(META_FILE, metadata)
                     save_table_data(table_name, [])
                 except (OSError, ValueError) as error:
                     print(f"Ошибка создания таблицы: {error}")
@@ -387,7 +374,7 @@ def run() -> None:
                 if dropped_metadata is None:
                     continue
                 try:
-                    save_metadata(METADATA_FILE, metadata)
+                    save_metadata(META_FILE, metadata)
                     delete_table_data(table_name)
                 except (OSError, ValueError) as error:
                     print(f"Ошибка удаления данных таблицы: {error}")
